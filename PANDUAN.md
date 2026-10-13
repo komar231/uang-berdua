@@ -39,6 +39,19 @@ Kalau suatu saat ingin proyek Firebase terpisah, ikuti Bagian A di PANDUAN Jadwa
 - Halaman **Berdua** menunjukkan siapa perlu membayar siapa. Setelah transfer, tekan **Catat pelunasan** supaya saldonya kembali impas.
 - Ketuk transaksi mana pun untuk mengubah atau menghapusnya. Kalian berdua bisa mengubah semua transaksi.
 
+## Tabungan dan investasi
+
+- Di halaman **Tabungan**, tekan **Buat tujuan baru**: beri nama, pilih jenis (tabungan, dana darurat, reksa dana, saham, emas, deposito/SBN, kripto), pemiliknya (kamu, pasangan, atau berdua), lalu target dan tenggat kalau ada.
+- **Setor** dan **Tarik** mencatat uang yang masuk dan keluar dari tujuan itu. Setoran muncul sebagai "Ditabung" di Ringkasan dan mengurangi "Sisa" bulan itu, tetapi tidak dihitung sebagai pengeluaran atau anggaran.
+- Untuk jenis investasi, tekan **Perbarui nilai** dan isi nilai totalnya saat ini (dari aplikasi sekuritas atau bank). Aplikasi lalu menampilkan untung atau ruginya terhadap modal yang disetor. Nilai ini diisi manual, tidak mengambil harga pasar otomatis.
+- Untuk tujuan berdua, terlihat berapa setoran masing-masing.
+
+## Foto profil dan latar
+
+- **Atur > Profilmu > Pilih foto**: tiap orang mengunggah fotonya sendiri dari perangkatnya. Kalau belum diunggah dan ruangnya sama dengan Jadwal Berdua, foto dari sana yang dipakai.
+- **Atur > Latar halaman**: pilih salah satu latar bawaan atau **Unggah foto latar**. Latar berlaku untuk kalian berdua dan langsung berganti di semua perangkat.
+- Foto diperkecil otomatis sebelum disimpan (profil 160 px, latar maksimal 1280 px).
+
 ## Hal yang perlu diketahui
 
 - **Tautan ruang adalah kuncinya.** Siapa pun yang punya tautan itu bisa membaca dan mengubah catatan uang kalian.
