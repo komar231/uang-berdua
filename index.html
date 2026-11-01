@@ -104,7 +104,7 @@ details.asm[open] summary{margin-bottom:12px}
 .btn.pri{background:var(--acc);border-color:var(--acc);color:var(--on)}
 .btn.danger{color:var(--bad);border-color:var(--bad)}
 .btns{display:flex;flex-wrap:wrap;gap:8px}
-input[type=text],input[type=date],select{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:.55rem .7rem;min-height:2.6rem;width:100%;min-width:0}
+input[type=text],input[type=password],input[type=date],select{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:.55rem .7rem;min-height:2.6rem;width:100%;min-width:0}
 label{font-size:.82rem;font-weight:600;color:var(--muted)}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -154,6 +154,14 @@ dialog::backdrop{background:rgb(8 12 24 / .5)}
 .form{display:flex;flex-direction:column;gap:12px}
 #f-amt{font:700 1.6rem var(--f-display);font-variant-numeric:tabular-nums}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(8.4rem + env(safe-area-inset-bottom,0px));z-index:20;background:var(--ink);color:var(--bg);padding:.6rem 1rem;border-radius:10px;font-size:.9rem;max-width:calc(100% - 32px);box-shadow:0 6px 20px rgb(0 0 0 / .25)}
+#lock{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;overflow:auto}
+.dots{display:flex;gap:14px;margin:4px 0}.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted)}.dots i.on{background:var(--ink);border-color:var(--ink)}
+.pad{display:grid;grid-template-columns:repeat(3,4.4rem);gap:12px}
+.pad button{height:4.4rem;border-radius:50%;border:1px solid var(--line);background:var(--surface);font:600 1.5rem var(--f-display)}
+.pad button:active{background:var(--sunk)}.pad .ghost{visibility:hidden}
+.alink{border:0;background:none;color:var(--muted);text-decoration:underline;font-size:.88rem;padding:.4rem}
+.ahd{display:flex;justify-content:space-between;gap:8px;padding:.2rem 0;font-size:.8rem;font-weight:600;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+.catin{font-weight:600;color:var(--ink);background:transparent;border-style:dashed}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -170,6 +178,7 @@ dialog::backdrop{background:rgb(8 12 24 / .5)}
 <button id="fab" type="button" hidden>+ Catat</button>
 <dialog id="dlg" aria-label="Catat transaksi"></dialog>
 <div id="toast" role="status" aria-live="polite" hidden></div>
+<div id="lock" role="dialog" aria-modal="true" aria-label="Kunci PIN" hidden></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -184,6 +193,16 @@ const CAT={makan:['Makan & minum','🍜','#D9762B'],transport:['Transport','🛵
   tagihan:['Tagihan & pulsa','🧾','#5B6B8C'],kos:['Kos / rumah','🏠','#8A6A3B'],kencan:['Kencan','💞','#D2456F'],
   hiburan:['Hiburan','🎮','#7B55C7'],sehat:['Kesehatan','💊','#2E9B7A'],kuliah:['Pendidikan','📚','#2F7FA8'],
   hadiah:['Hadiah & donasi','🎁','#C7493A'],lain:['Lainnya','📦','#7A8194']};
+/* Daftar aset/rekening: [label, emoji, warna] */
+const ACAT={cash:['Cash','💵','#2E9B7A'],deposito:['Deposito','🏛️','#3B82C4'],emoney:['E-money','📱','#D9762B'],crypto:['Kripto','💠','#7B55C7'],
+  reksa:['Reksadana','📊','#2F7FA8'],saham:['Saham','📈','#C7493A'],sisa:['Sisa bulan lalu','🗓️','#8A6A3B'],lain:['Lainnya','📦','#7A8194']};
+/* Daftar bawaan dari tabel tabungan (nama, kategori, saldo); nama yang terpotong di gambar perlu dicek ulang */
+const ASSET_TPL=[['Tabungan Utama','sisa',692227],['Tabungan hidup','cash',0],['Bank BCA','cash',12082807],['Paypal','cash',86500],
+  ['Tabungan w her (Jagobank)','cash',450000],['Seabank','cash',401903],['Deposito Krombank','deposito',2813808],['Deposito Neobank','deposito',0],
+  ['Deposito Superbank','deposito',2814200],['VISA Emoney UGM','emoney',38000],['VISA Emoney marc','emoney',3300],['Dompet','cash',3000],
+  ['Pulsa','emoney',0],['Gopay','emoney',0],['Bitcoin (idr)','crypto',0],['Shopeepay','emoney',0],['Reksadana Money Market 1','reksa',0],
+  ['Capital Money Market Fund','reksa',0],['Insight Retail Cash Fund','reksa',0],['Stockbit / Saham BBCA','saham',0],['Saham BBNI','saham',0],
+  ['Saham BBRI','saham',0],['Saham BMRI','saham',0]];
 const INC={saku:['Uang saku','💵','#3F8F3F'],gaji:['Gaji / honor','💼','#2F7FA8'],usaha:['Usaha','🏪','#D9762B'],
   invest:['Hasil investasi','📈','#7B55C7'],masuk:['Pemasukan lain','➕','#7A8194']};
 /* kunci: [label, emoji, punya nilai pasar yang naik turun] */
@@ -247,7 +266,13 @@ const field=(label,id,el)=>h('div',{class:'field'},h('label',{for:id,text:label}
 
 /* ---------- state ---------- */
 const S={me:null,view:'a',tab:'ringkas',month:today().slice(0,7),fs:null,db:null,room:null,ready:false,
-  tx:[],q1:{},q2:{},goals:[],meta:{names:{},colors:{},budget:{},photos:{}},jn:{},jp:{},fcat:'',open:null,plans:[],sub:'tujuan',draft:null,asm:false};
+  tx:[],q1:{},q2:{},goals:[],assets:[],aview:'all',unlocked:false,metaLoaded:false,
+  meta:{names:{},colors:{},budget:{},photos:{},catl:{a:{},b:{}},pins:{a:'',b:''}},jn:{},jp:{},fcat:'',open:null,plans:[],sub:'aset',draft:null,asm:false};
+/* Judul kategori boleh diubah tiap profil: "emoji nama" dalam satu teks. Tanpa emoji atau nama, bawaan dipakai. */
+const CATX=/^(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*)\s*(.*)$/u;
+function cl(k,sl){const d=CAT[k],t=sl&&S.meta.catl[sl]&&S.meta.catl[sl][k];if(!t)return d;
+  const m=CATX.exec(t),e=m?m[1]:'',l=(m?m[2]:t).trim();return[l||d[0],e||d[1],d[2]]}
+const clText=(k,sl)=>{const c=cl(k,sl);return c[1]+' '+c[0]};
 
 /* ---------- normalisasi data (semua isi penyimpanan dianggap tidak tepercaya) ---------- */
 function normTx(x,id){if(!x||typeof x!=='object')return null;
@@ -257,8 +282,10 @@ function normTx(x,id){if(!x||typeof x!=='object')return null;
   return{id,type,amt,date:x.date,by:x.by,ts:+x.ts||0,note:str(x.note,80).trim(),
     cat:type==='settle'?'':(set[x.cat]?x.cat:(type==='in'?'masuk':'lain')),
     split:type==='out'&&SPLIT[x.split]?x.split:'self'}}
-function normMeta(d){const m={names:{},colors:{},budget:{},photos:{}};d=d&&typeof d==='object'?d:{};
+function normMeta(d){const m={names:{},colors:{},budget:{},photos:{},catl:{a:{},b:{}},pins:{a:'',b:''}};d=d&&typeof d==='object'?d:{};
   ['a','b'].forEach(sl=>{m.names[sl]=str(d.names&&d.names[sl],30).trim();
+    for(const k in CAT){const t=str(d.catl&&d.catl[sl]&&d.catl[sl][k],40).trim();if(t)m.catl[sl][k]=t}
+    const pn=d.pins&&d.pins[sl];m.pins[sl]=typeof pn==='string'&&/^[0-9a-f]{64}$/.test(pn)?pn:'';
     const c=d.colors&&d.colors[sl];m.colors[sl]=COLORS[c]?c:(sl==='a'?'nila':'mawar');
     const b=d.budget&&d.budget[sl]||{},cats={};for(const k in CAT){const v=int(b.cats&&b.cats[k]);if(v)cats[k]=v}
     m.budget[sl]={total:int(b.total),cats};
@@ -270,6 +297,8 @@ function normGoal(x,id){if(!x||typeof x!=='object')return null;const name=str(x.
   const valAt=DATE.test(x.valAt)?x.valAt:'';
   return{id,name,kind:KIND[x.kind]?x.kind:'tabung',owner:x.owner==='a'||x.owner==='b'?x.owner:'both',target:int(x.target),due:DATE.test(x.due)?x.due:'',
     value:valAt?int(x.value):0,valAt,ts:+x.ts||0,moves}}
+function normAsset(x,id){if(!x||typeof x!=='object')return null;const name=str(x.name,40).trim();if(!name)return null;
+  return{id,name,cat:ACAT[x.cat]?x.cat:'lain',amt:int(x.amt),owner:x.owner==='b'?'b':'a',upd:DATE.test(x.upd)?x.upd:'',ts:+x.ts||0}}
 const pf=(v,max,def)=>{v=typeof v==='string'?parseFloat(v.replace(',','.')):+v;return isFinite(v)&&v>=0?Math.min(max,v):def};
 const pctS=v=>String(Math.round(v*10)/10).replace('.',',')+'%';
 function normPlan(x,id){if(!x||typeof x!=='object')return null;const asset=ASSET[x.asset]?x.asset:'lain',A=ASSET[asset],ret={};
@@ -288,7 +317,9 @@ function calcPlan(p){const al=RISK[p.risk][1],r=sum(Object.keys(INS).map(k=>al[k
   const fv=price[n],need=Math.max(0,(fv-(f-p.monthly*u))/u),ratio=fv?f/fv:0;
   return{al,r,price,fund,fv,end:f,need,ratio,gap:fv-f,hit:fund.findIndex((v,i)=>i>0&&v>=price[i]),
     status:ratio>=1.1?'lebih':ratio>=1?'cukup':'kurang',costs:p.cost.map(c=>fv*c/100)}}
-const catOf=t=>t.type==='settle'?SETTLE:(t.type==='in'?INC:CAT)[t.cat];
+const catOf=(t,sl)=>t.type==='settle'?SETTLE:t.type==='in'?INC[t.cat]:cl(t.cat,sl||t.by);
+const assetsOf=sl=>S.assets.filter(a=>!sl||a.owner===sl);
+const assetSum=sl=>sum(assetsOf(sl).map(a=>a.amt));
 
 /* ---------- hitungan ---------- */
 /* Bagian pengeluaran yang menjadi tanggungan sl */
@@ -358,7 +389,11 @@ function subscribe(){const db=S.db,col=db.collection('tx'),cut=addM(today().slic
   /* 13 bulan terakhir untuk ringkasan, ditambah semua transaksi bersama supaya saldo utang selalu utuh */
   col.where('date','>=',cut).onSnapshot(qs=>{S.q1=map(qs);S.ready=true;merge()},subErr);
   col.where('sh','==',true).onSnapshot(qs=>{S.q2=map(qs);merge()},subErr);
-  db.doc('uang/meta').onSnapshot(sn=>{S.meta=normMeta(sn.exists?sn.data():null);changed()},subErr);
+  /* Snapshot kosong dari cache belum boleh dianggap "tanpa PIN"; tunggu data dari server */
+  db.doc('uang/meta').onSnapshot(sn=>{S.meta=normMeta(sn.exists?sn.data():null);
+    if(sn.exists||!sn.metadata.fromCache){S.metaLoaded=true;['a','b'].forEach(sl=>lsSet('ub-pin-'+sl,S.meta.pins[sl]||'0'))}
+    changed()},subErr);
+  db.collection('assets').onSnapshot(qs=>{S.assets=qs.docs.map(d=>normAsset(d.data(),d.id)).filter(Boolean).sort((x,y)=>x.ts-y.ts||x.name.localeCompare(y.name));changed()},subErr);
   /* Nama dari Jadwal Berdua dipakai kalau ruangnya sama dan nama di sini belum diisi */
   ['a','b'].forEach(sl=>db.doc('profiles/'+sl).get().then(sn=>{if(!sn.exists)return;const p=sn.data()||{};S.jn[sl]=str(p.name,30).trim();
     if(typeof p.photo==='string'&&p.photo.length<90000&&PHOTO.test(p.photo))S.jp[sl]=p.photo;changed()}).catch(()=>{}));
@@ -371,7 +406,7 @@ function subscribe(){const db=S.db,col=db.collection('tx'),cut=addM(today().slic
 function newCode(){const abc='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789',r=new Uint8Array(20);crypto.getRandomValues(r);return Array.from(r,x=>abc[x%abc.length]).join('')}
 function roomLink(){return location.origin+location.pathname+'#r-'+S.room}
 function setRoom(code){S.room=code;lsSet('ub-room',code);connect()}
-function setMe(sl){S.me=sl;S.view=sl;lsSet('ub-me',sl);render()}
+function setMe(sl){S.me=sl;S.view=sl;S.unlocked=false;lsSet('ub-me',sl);render()}
 function connect(){if(!S.fs||!S.room||S.db){render();return}
   const pre='rooms/'+S.room+'/';S.db={doc:p=>S.fs.doc(pre+p),collection:p=>S.fs.collection(pre+p)};
   subscribe();render()}
@@ -380,6 +415,7 @@ async function boot(){
   const hash=location.hash.replace(/^#r-/,''),saved=lsGet('ub-room'),me=lsGet('ub-me');
   if(okCode(hash)){S.room=hash;lsSet('ub-room',hash);history.replaceState(null,'',location.pathname)}else if(okCode(saved))S.room=saved;
   if(me==='a'||me==='b'){S.me=me;S.view=me}
+  updateLock();
   if(!configured){render();return}
   try{firebase.initializeApp(CFG);const fs=firebase.firestore();
     try{await fs.enablePersistence({synchronizeTabs:true})}catch(e){}
@@ -413,7 +449,7 @@ function monthNav(){const cur=today().slice(0,7);
 const tile=(label,val,cls)=>h('div',{class:'tile'},h('span',{text:label}),h('b',{class:cls,text:val}));
 function bar(val,max,k){const p=max?Math.min(100,val/max*100):0;
   return h('div',{class:'bar'+(max&&val>max?' over':max&&val>max*.85?' near':''),style:k?'--k:'+k:null},h('u',{style:'width:'+p+'%'}))}
-function txRow(t,sl){const c=catOf(t),mine=sl?share(t,sl):t.amt,tags=[];let name=c[0],amt,sub;
+function txRow(t,sl){const c=catOf(t,sl),mine=sl?share(t,sl):t.amt,tags=[];let name=c[0],amt,sub;
   if(t.type==='settle'){name=pname(t.by)+' membayar '+pname(other(t.by));amt=rp(t.amt)}
   else if(t.type==='in')amt='+'+rp(t.amt);
   else{amt=rp(mine);if(sl&&mine!==t.amt)sub='dari '+rp(t.amt);
@@ -447,7 +483,8 @@ function vRingkas(){const sl=S.view,m=S.month,L=monthTx(m),cur=today().slice(0,7
   const keys=Object.keys(CAT).filter(k=>cats[k]||(B.cats[k]&&m===cur)).sort((x,y)=>(cats[y]||0)-(cats[x]||0));
   const out=[monthNav()];
   if(D)out.push(h('div',{class:'notice'},h('span',null,D.text+' ',h('b',{class:'num',text:rp(D.amt)})),h('button',{class:'btn',type:'button',onclick:()=>{S.tab='berdua';render()}},'Lihat')));
-  out.push(h('div',{class:'tiles'},tile('Pengeluaran',rp(sp)),tile('Pemasukan',rp(inc)),tile('Ditabung',rp(saved)),tile('Sisa',rp(inc-sp-saved),inc-sp-saved<0?'down':'up')));
+  out.push(h('div',{class:'tiles'},tile('Pengeluaran',rp(sp)),tile('Pemasukan',rp(inc)),tile('Ditabung',rp(saved)),tile('Sisa',rp(inc-sp-saved),inc-sp-saved<0?'down':'up'),
+    S.assets.length?tile('Total saldo aset',rp(assetSum(sl))):null));
   if(B.total){const left=B.total-sp,rest=dim-gone+1;
     out.push(h('section',{class:'card stack'},h('div',{class:'hd',style:'margin:0'},h('h3',{text:'Anggaran bulan ini'}),h('span',{class:'num muted',text:rp(sp)+' dari '+rp(B.total)})),
       bar(sp,B.total),
@@ -456,7 +493,7 @@ function vRingkas(){const sl=S.view,m=S.month,L=monthTx(m),cur=today().slice(0,7
   if(!sp&&!inc&&!saved){out.push(empty(you?'Belum ada catatan bulan ini':pname(sl)+' belum mencatat apa pun bulan ini',you?'Tekan "+ Catat" setiap kali kamu mengeluarkan uang. Cukup jumlah dan kategorinya.':'Catatannya akan muncul di sini begitu ada.'));return out}
   if(!sp)return out;
   out.push(h('section',{class:'card'},h('div',{class:'hd'},h('h3',{text:'Per hari'}),h('span',{class:'muted num',text:'rata-rata '+rp(sp/gone)})),dailyChart(m,sl)));
-  out.push(h('section',{class:'card'},h('h3',{text:'Per kategori'}),keys.map(k=>{const v=cats[k]||0,b=B.cats[k]||0,c=CAT[k];
+  out.push(h('section',{class:'card'},h('h3',{text:'Per kategori'}),keys.map(k=>{const v=cats[k]||0,b=B.cats[k]||0,c=cl(k,sl);
     return h('div',{class:'cat'},h('span',{class:'em',style:'--k:'+c[2],'aria-hidden':'true'},c[1]),h('span',{text:c[0]}),h('b',{class:'num',text:rp(v)}),
       bar(v,b||sp,b?null:c[2]),h('small',{text:b?(v>b?'Lewat '+rp(v-b)+' dari batas '+rp(b):'Sisa '+rp(b-v)+' dari batas '+rp(b)):Math.round(v/sp*100)+'% dari pengeluaran'}))})));
   return out}
@@ -469,7 +506,7 @@ function vTransaksi(){const sl=S.view,m=S.month;
   if(!all.length){out.push(empty('Belum ada transaksi di '+mLabel(m),'Transaksi yang dicatat pada bulan ini akan terdaftar di sini, dikelompokkan per hari.'));return out}
   out.push(h('section',{class:'card'},h('div',{class:'hd'},h('h3',{text:list.length+' transaksi'}),
       h('select',{'aria-label':'Saring kategori',style:'width:auto',onchange:e=>{S.fcat=e.target.value;render()}},h('option',{value:''},'Semua kategori'),
-        used.map(k=>{const c=CAT[k]||INC[k];return h('option',{value:k,selected:k===S.fcat},c[1]+' '+c[0])}))),
+        used.map(k=>{const c=CAT[k]?cl(k,sl):INC[k];return h('option',{value:k,selected:k===S.fcat},c[1]+' '+c[0])}))),
     txList(list,sl)));
   return out}
 
@@ -518,8 +555,56 @@ function goalCard(g,x){const K=KIND[g.kind],pct=g.target?Math.min(100,Math.round
         h('button',{class:'ib',type:'button','aria-label':'Hapus catatan '+rp(m.amt),title:'Hapus',onclick:e=>{const b=e.currentTarget;
           if(!b.dataset.arm){b.dataset.arm=1;b.textContent='?';b.style.color='var(--bad)';return}
           const p={moves:g.moves.filter(y=>y.id!==m.id)};if(g.valAt)p.value=Math.max(0,g.value-m.amt);ref.update(p).catch(writeFail)}},'×')))):null)}
-function vTabungan(){const seg=h('div',{class:'seg',role:'group','aria-label':'Bagian'},[['tujuan','Tujuan menabung'],['rencana','Perencana investasi']].map(x=>
+/* Sisa uang bulan ini untuk satu profil: sisa anggaran (kalau ada batas) dan sisa pemasukan setelah pengeluaran dan tabungan */
+function monthLeft(sl){const m=today().slice(0,7),L=monthTx(m),sp=sum(L.map(t=>share(t,sl))),inc=sum(L.filter(t=>t.type==='in'&&t.by===sl).map(t=>t.amt)),B=S.meta.budget[sl].total;
+  return{sp,inc,budget:B?B-sp:null,cash:inc-sp-savedIn(m,sl)}}
+function openAsset(a){const e=a||{name:'',cat:'cash',amt:0,owner:S.me};
+  dlgForm(a?'Ubah aset':'Tambah aset',[
+    field('Nama (rekening, e-money, saham, dll.)','a-name',h('input',{type:'text',id:'a-name',maxlength:40,value:e.name,placeholder:'mis. Bank BCA, Gopay, Saham BBRI',autocomplete:'off',required:true})),
+    h('div',{class:'two'},field('Kategori','a-cat',h('select',{id:'a-cat'},Object.keys(ACAT).map(k=>h('option',{value:k,selected:k===e.cat},ACAT[k][1]+' '+ACAT[k][0])))),
+      field('Milik','a-owner',h('select',{id:'a-owner'},['a','b'].map(sl=>h('option',{value:sl,selected:sl===e.owner},pname(sl)+(sl===S.me?' (saya)':'')))))),
+    field('Saldo / nilai sekarang (Rp)','a-amt',moneyIn('a-amt',e.amt))],
+    ()=>{const name=$('a-name').value.trim().slice(0,40);if(!name){toast('Isi namanya dulu.');return false}
+      const d={name,cat:$('a-cat').value,owner:$('a-owner').value,amt:digits($('a-amt').value),upd:today()},col=S.db.collection('assets');
+      if(a)col.doc(a.id).update(d).catch(writeFail);else col.doc().set(Object.assign({ts:Date.now()},d)).catch(writeFail);
+      toast(a?'Perubahan disimpan.':'Aset ditambahkan.')},
+    a&&armBtn('Hapus','Yakin hapus?',()=>{S.db.collection('assets').doc(a.id).delete().catch(writeFail);$('dlg').close();toast('Aset dihapus.')}));
+  if(!a)$('a-name').focus()}
+function importAssets(){const col=S.db.collection('assets'),b=S.fs.batch(),t0=Date.now();
+  ASSET_TPL.forEach((r,i)=>b.set(col.doc(),{name:r[0],cat:r[1],amt:r[2],owner:S.me,upd:today(),ts:t0+i}));
+  b.commit().catch(writeFail);toast('Daftar aset diimpor. Periksa nama dan saldonya.')}
+function vAset(){const av=S.aview,list=assetsOf(av==='all'?null:av),total=sum(list.map(a=>a.amt)),cur=today().slice(0,7);
+  const seg=h('div',{class:'seg',role:'group','aria-label':'Pemilik aset'},[['all','Berdua'],[S.me,'Saya'],[other(S.me),pname(other(S.me))]].map(x=>
+    h('button',{type:'button','aria-pressed':String(av===x[0]),onclick:()=>{S.aview=x[0];render()}},x[1])));
+  const liquid=sum(list.filter(a=>a.cat==='cash'||a.cat==='emoney'||a.cat==='sisa').map(a=>a.amt));
+  const sls=av==='all'?['a','b']:[av],ml=sls.map(monthLeft),sumN=k=>ml.every(x=>x[k]==null)?null:sum(ml.map(x=>x[k]||0));
+  const bl=sumN('budget'),cash=sumN('cash');
+  const out=[seg,h('div',{class:'tiles'},tile('Total saldo aset',rp(total)),tile('Uang tersedia (cash, e-money, sisa)',rp(liquid)),
+      bl!=null?tile('Sisa anggaran bulan ini',rp(bl),bl<0?'down':'up'):null,tile('Sisa dari pemasukan bulan ini',rp(cash),cash<0?'down':'up')),
+    h('div',{class:'btns'},h('button',{class:'btn pri',type:'button',onclick:()=>openAsset(null)},'Tambah aset'),
+      !S.assets.length&&h('button',{class:'btn',type:'button',onclick:importAssets},'Impor daftar dari tabel'))];
+  if(av==='all')out.push(h('div',{class:'duo'},['a','b'].map(sl=>{const m=monthLeft(sl);
+    return h('section',{class:'card stack v'+sl},h('div',{style:'display:flex;align-items:center;gap:.5rem'},avatar(sl,36),h('h3',{text:pname(sl)})),
+      h('div',{class:'big',style:'font-size:1.5rem',text:rp(assetSum(sl))}),
+      h('div',{class:'kv'},h('span',{text:'Sisa anggaran '+MON[+cur.slice(5,7)-1]}),h('b',{class:'num '+(m.budget!=null&&m.budget<0?'down':''),text:m.budget==null?'belum diatur':rp(m.budget)})),
+      h('div',{class:'kv'},h('span',{text:'Sisa dari pemasukan'}),h('b',{class:'num '+(m.cash<0?'down':''),text:rp(m.cash)})))})));
+  if(!list.length){out.push(empty('Belum ada aset','Catat rekening, e-money, deposito, reksadana, saham, dan lainnya. Totalnya dihitung otomatis di sini.'));return out}
+  const cats=Object.keys(ACAT).map(k=>[k,sum(list.filter(a=>a.cat===k).map(a=>a.amt))]).filter(x=>x[1]>0);
+  if(cats.length&&total)out.push(h('section',{class:'card'},h('h3',{text:'Per kategori'}),
+    h('div',{class:'stackbar','aria-hidden':'true'},cats.map(x=>h('i',{style:'--k:'+ACAT[x[0]][2]+';width:'+x[1]/total*100+'%'}))),
+    cats.map(x=>h('div',{class:'al',style:'--k:'+ACAT[x[0]][2]},h('i'),h('span',{text:ACAT[x[0]][1]+' '+ACAT[x[0]][0]}),h('b',{class:'num',text:rp(x[1])}),
+      h('small',{text:Math.round(x[1]/total*100)+'% dari total'})))));
+  out.push(h('section',{class:'card'},h('div',{class:'ahd'},h('span',{text:'Nama · kategori'}),h('span',{text:'Jumlah'})),
+    list.map(a=>{const c=ACAT[a.cat];
+      return h('button',{class:'tx',type:'button','aria-label':'Ubah '+a.name+' '+rp(a.amt),onclick:()=>openAsset(a)},
+        h('span',{class:'em',style:'--k:'+c[2],'aria-hidden':'true'},c[1]),
+        h('span',null,h('span',{class:'nm',text:a.name}),h('span',{class:'meta'},h('span',{text:c[0]}),av==='all'&&h('span',{class:'tag',text:pname(a.owner)}),a.upd&&h('span',{text:'per '+nice(a.upd)}))),
+        h('span',{class:'amt'},rp(a.amt)))}),
+    h('div',{class:'kv',style:'border-top:1px solid var(--line);padding-top:.6rem;margin-top:.3rem'},h('b',{text:'Total'}),h('b',{class:'num',text:rp(total)}))));
+  return out}
+function vTabungan(){const seg=h('div',{class:'seg',role:'group','aria-label':'Bagian'},[['aset','Saldo & aset'],['tujuan','Tujuan menabung'],['rencana','Perencana investasi']].map(x=>
     h('button',{type:'button','aria-pressed':String(S.sub===x[0]),onclick:()=>{S.sub=x[0];S.draft=null;render()}},x[1])));
+  if(S.sub==='aset')return[seg].concat(vAset());
   if(S.sub==='rencana')return[seg].concat(vRencana());
   const st=S.goals.map(g=>[g,gStat(g)]),gain=sum(st.filter(x=>x[1].inv).map(x=>x[1].gain));
   const out=[seg,h('div',{class:'tiles'},tile('Total tabungan & investasi',rp(sum(st.map(x=>x[1].val)))),tile('Disetor bulan ini',rp(savedIn(today().slice(0,7)))),
@@ -620,9 +705,16 @@ function vAtur(){const me=S.me,B=S.meta.budget[me];
         S.meta.photos[me]?h('button',{class:'btn',type:'button',onclick:()=>saveMeta({photos:{[me]:''}})},'Hapus foto'):null)),
       h('div',{class:'field'},h('label',{text:'Warna'}),h('div',{class:'sws'},Object.keys(COLORS).map(c=>h('button',{type:'button',style:'--c:var(--c-'+c+')','aria-label':COLORS[c],'aria-pressed':String(S.meta.colors[me]===c),onclick:()=>saveMeta({colors:{[me]:c}})}))))),
     h('section',{class:'card stack'},h('h3',{text:'Anggaran bulananmu'}),
-      h('p',{class:'muted',style:'max-width:65ch',text:'Batas total dipakai untuk menghitung sisa uang per hari. Batas per kategori boleh dikosongkan.'}),
+      h('p',{class:'muted',style:'max-width:65ch',text:'Batas total dipakai untuk menghitung sisa uang per hari. Batas per kategori boleh dikosongkan. Judul kategori bisa kamu ubah sendiri (teks dan emoji); pengubahan ini hanya berlaku untuk profilmu. Kosongkan judul untuk kembali ke bawaan.'}),
       field('Batas total per bulan (Rp)','bd-total',moneyIn('bd-total',B.total,v=>setBud(null,v))),
-      h('div',{class:'bud'},Object.keys(CAT).map(k=>field(CAT[k][1]+' '+CAT[k][0],'bd-'+k,moneyIn('bd-'+k,B.cats[k],v=>setBud(k,v)))))),
+      h('div',{class:'bud'},Object.keys(CAT).map(k=>h('div',{class:'field'},
+        h('input',{type:'text',id:'bl-'+k,class:'catin',maxlength:40,value:S.meta.catl[me][k]||clText(k,me),placeholder:CAT[k][1]+' '+CAT[k][0],autocomplete:'off','aria-label':'Judul kategori '+CAT[k][0],
+          onchange:e=>{const t=e.target.value.trim().slice(0,40);saveMeta({catl:{[me]:{[k]:t===clText(k,null)?'':t}}});if(!t)e.target.value=clText(k,null)}}),
+        moneyIn('bd-'+k,B.cats[k],v=>setBud(k,v)))))),
+    h('section',{class:'card stack'},h('h3',{text:'Keamanan PIN'}),
+      h('p',{class:'muted',style:'max-width:65ch',text:'PIN 4 angka diminta setiap kali halaman dibuka. Tiap profil punya PIN sendiri, jadi atur PIN di perangkat '+pname(me)+'. '+(S.meta.pins[me]?'PIN untuk profil ini sedang aktif.':'PIN untuk profil ini belum diatur.')}),
+      h('div',{class:'btns'},h('button',{class:'btn pri',type:'button',onclick:openPin},S.meta.pins[me]?'Ubah PIN':'Atur PIN'),
+        S.meta.pins[me]&&h('button',{class:'btn',type:'button',onclick:()=>{S.unlocked=false;render()}},'Kunci sekarang'))),
     h('section',{class:'card stack'},h('h3',{text:'Latar halaman'}),
       h('p',{class:'muted',style:'max-width:65ch',text:'Latar berlaku untuk kalian berdua di semua perangkat. Siapa pun dari kalian bisa menggantinya.'+(wallKey()==='photo'?' Saat ini memakai foto unggahan.':'')}),
       h('div',{class:'sws walls',role:'group','aria-label':'Latar halaman'},Object.keys(WALLS).map(k=>h('button',{type:'button',style:'background:'+(WALLS[k][1]||'var(--bg)'),
@@ -637,10 +729,10 @@ function vAtur(){const me=S.me,B=S.meta.budget[me];
         h('button',{class:'btn',type:'button',onclick:()=>navigator.clipboard.writeText(roomLink()).then(()=>toast('Tautan disalin.'),()=>toast('Tidak bisa menyalin. Salin manual dari kotaknya.'))},'Salin')),
       h('div',{class:'btns'},h('button',{class:'btn',type:'button',onclick:exportCsv},'Unduh CSV'),
         h('button',{class:'btn',type:'button',onclick:()=>setMe(other(me))},'Pindah ke profil '+pname(other(me))),
-        armBtn('Keluar dari ruang','Yakin keluar dari ruang ini?',()=>{['ub-room','ub-me','ub-wall','ub-wall-img'].forEach(k=>lsSet(k,null));location.reload()})))]}
+        armBtn('Keluar dari ruang','Yakin keluar dari ruang ini?',()=>{['ub-room','ub-me','ub-wall','ub-wall-img','ub-pin-a','ub-pin-b'].forEach(k=>lsSet(k,null));location.reload()})))]}
 
 function exportCsv(){const q=v=>'"'+String(v).replace(/"/g,'""')+'"',rows=[['tanggal','jenis','jumlah','kategori','catatan','dibayar_oleh','untuk']];
-  S.tx.slice().reverse().forEach(t=>rows.push([t.date,t.type==='in'?'pemasukan':t.type==='settle'?'pelunasan':'pengeluaran',t.amt,catOf(t)[0],t.note,pname(t.by),
+  S.tx.slice().reverse().forEach(t=>rows.push([t.date,t.type==='in'?'pemasukan':t.type==='settle'?'pelunasan':'pengeluaran',t.amt,catOf(t,t.by)[0],t.note,pname(t.by),
     t.type==='out'?(t.split==='both'?'berdua':t.split==='other'?pname(other(t.by)):pname(t.by)):'']));
   S.goals.forEach(g=>g.moves.forEach(m=>rows.push([m.d,m.amt<0?'tarik tabungan':'setor tabungan',Math.abs(m.amt),g.name,m.note,pname(m.by),g.owner==='both'?'berdua':pname(g.owner)])));
   const a=h('a',{href:URL.createObjectURL(new Blob(['﻿'+rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv'})),download:'uang-berdua-'+today()+'.csv'});
@@ -666,7 +758,7 @@ function show(title,fields,t,onSave){
     t&&armBtn('Hapus','Yakin hapus?',()=>{delTx(t.id);$('dlg').close();toast('Dihapus.')}));
   if(!t)$('f-amt').focus()}
 function openTx(t){const e=t||{type:'out',amt:0,cat:'',date:today(),by:S.me,split:'self',note:''};let type=e.type;
-  const sel=(id,set,def)=>h('select',{id},Object.keys(set).map(k=>h('option',{value:k,selected:k===(set[e.cat]?e.cat:def)},set[k][1]+' '+set[k][0])));
+  const sel=(id,set,def)=>h('select',{id},Object.keys(set).map(k=>{const c=set===CAT?cl(k,S.me):set[k];return h('option',{value:k,selected:k===(set[e.cat]?e.cat:def)},c[1]+' '+c[0])}));
   const fOut=field('Kategori','f-cat-out',sel('f-cat-out',CAT,'makan')),fIn=field('Kategori','f-cat-in',sel('f-cat-in',INC,'saku'));
   const fSplit=field('Untuk siapa','f-split',h('select',{id:'f-split'},Object.keys(SPLIT).map(k=>h('option',{value:k,selected:k===e.split},SPLIT[k]))));
   const seg=h('div',{class:'seg',role:'group','aria-label':'Jenis'},[['out','Pengeluaran'],['in','Pemasukan']].map(([k,l])=>h('button',{type:'button','data-k':k,onclick:()=>{type=k;sync()}},l)));
@@ -710,9 +802,66 @@ function openValue(g,x){
       goalRef(g.id).update({value:digits($('f-amt').value),valAt:today()}).catch(writeFail);toast('Nilai diperbarui.')});
   $('f-amt').focus()}
 
+/* ---------- kunci PIN ---------- */
+/* Yang disimpan hanya hash PIN (disamarkan dengan kode ruang dan profil), disinkronkan lewat meta supaya berlaku di semua perangkat.
+   PIN 4 angka bukan enkripsi data: ia mencegah orang iseng yang memegang perangkat yang sedang terbuka. */
+async function pinHash(sl,pin){const msg='ub1:'+S.room+':'+sl+':'+pin;
+  if(window.crypto&&crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(msg));return Array.from(new Uint8Array(b),x=>x.toString(16).padStart(2,'0')).join('')}
+  let out='';for(let r=0;r<8;r++){let a=0x811c9dc5^(r*2654435761);for(let i=0;i<msg.length;i++){a^=msg.charCodeAt(i);a=Math.imul(a,16777619)}out+=(a>>>0).toString(16).padStart(8,'0')}
+  return out}
+/* null = belum diketahui, '' = tanpa PIN, selain itu hash-nya */
+function pinState(sl){if(S.metaLoaded)return S.meta.pins[sl]||'';const v=lsGet('ub-pin-'+sl);return v===null?null:v==='0'?'':v}
+let lockBuf='',lockFails=0,lockUntil=0,lockMode='',lockBusy=false;
+function lockDots(){const d=$('lock').querySelector('.dots');if(d)d.querySelectorAll('i').forEach((i,n)=>i.classList.toggle('on',n<lockBuf.length))}
+function lockMsg(t){const m=$('lock').querySelector('.lmsg');if(m)m.textContent=t}
+async function lockPress(k){if(lockBusy)return;
+  if(k==='<'){lockBuf=lockBuf.slice(0,-1);lockDots();return}
+  if(lockBuf.length>=4)return;
+  if(Date.now()<lockUntil){lockMsg('Terlalu banyak percobaan. Tunggu '+Math.ceil((lockUntil-Date.now())/1000)+' detik.');return}
+  lockBuf+=k;lockDots();lockMsg('');if(lockBuf.length<4)return;
+  lockBusy=true;const h1=await pinHash(S.me,lockBuf);lockBusy=false;lockBuf='';
+  if(h1===pinState(S.me)){lockFails=0;S.unlocked=true;render();return}
+  lockDots();if(++lockFails>=5){lockFails=0;lockUntil=Date.now()+30000;lockMsg('PIN salah 5 kali. Coba lagi dalam 30 detik.')}else lockMsg('PIN salah.')}
+function buildLock(el){const me=S.me;lockBuf='';
+  const forgot=h('form',{class:'stack',hidden:true,style:'width:min(100%,320px)',onsubmit:e=>{e.preventDefault();
+      const v=$('lk-room').value.trim().replace(/^.*#r-/,'');
+      if(v!==S.room){lockMsg('Kode ruang tidak cocok.');return}
+      if(!S.db){lockMsg('Belum tersambung. Coba lagi sebentar.');return}
+      saveMeta({pins:{[me]:''}});lsSet('ub-pin-'+me,'0');S.meta.pins[me]='';S.unlocked=true;render();toast('PIN dihapus. Atur PIN baru di menu Atur.')}},
+    h('p',{class:'muted',style:'font-size:.88rem',text:'Tempel tautan atau kode ruang (dari menu Atur di perangkat lain, atau dari pasanganmu) untuk menghapus PIN.'}),
+    h('input',{type:'text',id:'lk-room',placeholder:'Tautan atau kode ruang','aria-label':'Tautan atau kode ruang',autocomplete:'off'}),h('button',{class:'btn pri',type:'submit'},'Hapus PIN'));
+  const pad=h('div',{class:'pad'},['1','2','3','4','5','6','7','8','9'].map(k=>h('button',{type:'button',onclick:()=>lockPress(k)},k)),
+    h('button',{type:'button',class:'ghost',tabindex:'-1','aria-hidden':'true'}),h('button',{type:'button',onclick:()=>lockPress('0')},'0'),
+    h('button',{type:'button','aria-label':'Hapus angka',onclick:()=>lockPress('<')},'⌫'));
+  el.replaceChildren(avatar(me,56),h('h2',{text:'Masukkan PIN'}),h('p',{class:'muted',text:'Profil '+pname(me)}),
+    h('div',{class:'dots','aria-hidden':'true'},[0,1,2,3].map(()=>h('i'))),h('p',{class:'lmsg down','aria-live':'polite',style:'min-height:1.4em'}),pad,
+    h('button',{type:'button',class:'alink',onclick:()=>{forgot.hidden=!forgot.hidden;pad.hidden=!forgot.hidden}},'Lupa PIN?'),forgot)}
+function updateLock(){const el=$('lock'),st=S.me?pinState(S.me):'',need=!!S.me&&!S.unlocked&&st!=='';
+  if(!need){el.hidden=true;lockMode='';return}
+  el.hidden=false;
+  const mode=st===null?'wait':S.me;
+  if(mode===lockMode)return;lockMode=mode;
+  if(st===null)el.replaceChildren(h('h2',{text:'Memuat…'}),h('p',{class:'muted',text:'Memeriksa pengaturan PIN.'}));else buildLock(el)}
+document.addEventListener('keydown',e=>{if($('lock').hidden||lockMode==='wait'||e.ctrlKey||e.metaKey||e.altKey)return;
+  const f=$('lk-room');if(f&&document.activeElement===f)return;
+  if(/^\d$/.test(e.key))lockPress(e.key);else if(e.key==='Backspace')lockPress('<')});
+function openPin(){const me=S.me,has=!!S.meta.pins[me];
+  const pin=(id,label)=>field(label,id,h('input',{type:'password',id,inputmode:'numeric',maxlength:4,autocomplete:'off',oninput:e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,4)}}));
+  const d=$('dlg');
+  const run=async(remove)=>{const cur=has?$('p-cur').value:'',nw=remove?'':$('p-new').value;
+    if(has&&await pinHash(me,cur)!==S.meta.pins[me]){toast('PIN saat ini salah.');return}
+    if(!remove){if(!/^\d{4}$/.test(nw)){toast('PIN baru harus 4 angka.');return}
+      if(nw!==$('p-new2').value){toast('Konfirmasi PIN tidak sama.');return}}
+    const hh=remove?'':await pinHash(me,nw);saveMeta({pins:{[me]:hh}});lsSet('ub-pin-'+me,hh||'0');S.meta.pins[me]=hh;S.unlocked=true;
+    d.close();render();toast(remove?'PIN dimatikan.':'PIN disimpan.')};
+  dlgForm(has?'Ubah PIN':'Atur PIN',[h('p',{class:'muted',text:'PIN 4 angka untuk profil '+pname(me)+'. PIN diminta setiap kali halaman dibuka.'}),
+    has&&pin('p-cur','PIN saat ini'),pin('p-new','PIN baru (4 angka)'),pin('p-new2','Ulangi PIN baru')],()=>{run(false);return false},
+    has&&h('button',{class:'btn danger',type:'button',onclick:()=>run(true)},'Matikan PIN'));
+  $(has?'p-cur':'p-new').focus()}
+
 /* ---------- render ---------- */
 let chT;function changed(){clearTimeout(chT);chT=setTimeout(render,40)}
-function render(){const g=gate(),root=document.documentElement,perPerson=S.tab==='ringkas'||S.tab==='transaksi';
+function render(){updateLock();const g=gate(),root=document.documentElement,perPerson=S.tab==='ringkas'||S.tab==='transaksi';
   root.dataset.ca=S.meta.colors.a||'nila';root.dataset.cb=S.meta.colors.b||'mawar';
   $('app').className=(perPerson?S.view:S.me)==='b'?'vb':'va';$('fab').className=S.me==='b'?'vb':'va';
   $('fab').hidden=!!g;$('nav').hidden=!!g;$('who').hidden=!!g||!perPerson;
