@@ -449,6 +449,9 @@ function monthNav(){const cur=today().slice(0,7);
 const tile=(label,val,cls)=>h('div',{class:'tile'},h('span',{text:label}),h('b',{class:cls,text:val}));
 function bar(val,max,k){const p=max?Math.min(100,val/max*100):0;
   return h('div',{class:'bar'+(max&&val>max?' over':max&&val>max*.85?' near':''),style:k?'--k:'+k:null},h('u',{style:'width:'+p+'%'}))}
+/* Batang sisa anggaran: isinya menyusut seiring terpakai; kuning saat tinggal sedikit, merah saat lewat batas */
+function remBar(used,max,k){const r=Math.max(0,(max-used)/max);
+  return h('div',{class:'bar','role':'img','aria-label':'Sisa '+Math.round(r*100)+'% dari batas',style:'--k:'+(used>max?'var(--bad)':r<.15?'var(--warn)':k)},h('u',{style:'width:'+r*100+'%'}))}
 function txRow(t,sl){const c=catOf(t,sl),mine=sl?share(t,sl):t.amt,tags=[];let name=c[0],amt,sub;
   if(t.type==='settle'){name=pname(t.by)+' membayar '+pname(other(t.by));amt=rp(t.amt)}
   else if(t.type==='in')amt='+'+rp(t.amt);
@@ -495,7 +498,7 @@ function vRingkas(){const sl=S.view,m=S.month,L=monthTx(m),cur=today().slice(0,7
   out.push(h('section',{class:'card'},h('div',{class:'hd'},h('h3',{text:'Per hari'}),h('span',{class:'muted num',text:'rata-rata '+rp(sp/gone)})),dailyChart(m,sl)));
   out.push(h('section',{class:'card'},h('h3',{text:'Per kategori'}),keys.map(k=>{const v=cats[k]||0,b=B.cats[k]||0,c=cl(k,sl);
     return h('div',{class:'cat'},h('span',{class:'em',style:'--k:'+c[2],'aria-hidden':'true'},c[1]),h('span',{text:c[0]}),h('b',{class:'num',text:rp(v)}),
-      bar(v,b||sp,b?null:c[2]),h('small',{text:b?(v>b?'Lewat '+rp(v-b)+' dari batas '+rp(b):'Sisa '+rp(b-v)+' dari batas '+rp(b)):Math.round(v/sp*100)+'% dari pengeluaran'}))})));
+      b?remBar(v,b,c[2]):bar(v,sp,c[2]),h('small',{text:b?(v>b?'Lewat '+rp(v-b)+' dari batas '+rp(b):'Sisa '+rp(b-v)+' dari batas '+rp(b)):Math.round(v/sp*100)+'% dari pengeluaran'}))})));
   return out}
 
 function vTransaksi(){const sl=S.view,m=S.month;
